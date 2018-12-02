@@ -4768,8 +4768,16 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 	to_shinfo = skb_shinfo(to);
 	from_shinfo = skb_shinfo(from);
 
+	printk("sw.kim: Debug pre hook\n");
+	if (from_shinfo->frag_list) {
+		printk("sw.kim: Debug pre hook. from skb has frag_list.\n");
+	}
+
+	printk("sw.kim: Debug skb_try_coalesce enter\n");
 	if (len <= skb_tailroom(to)) {
-		if (to_shinfo->frag_list) {
+		printk("sw.kim: Debug if (len <= skb_tailroom(to)) enter. \n");
+		printk("sw.kim: Debug from->len = %d\n", len);
+		if (from_shinfo->frag_list) {
 			struct sk_buff *frag_iter;
 			i = 0;
 			printk("sw.kim: Debug start. from skb has frag_list.\n");
@@ -4779,8 +4787,8 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 				printk("sw.kim: Debug frag_list skb[%d]->len = %d\n", frag_iter->len);
 				printk("sw.kim: Debug Current total skb length = %d\n", len);
 			}
-			printk("sw.kim: Debug end. original skb len = %d", len);
-			printk("sw.kim: Debug end. skb_tailroom size = %d", skb_tailroom(to));
+			printk("sw.kim: Debug end. original skb len = %d\n", len);
+			printk("sw.kim: Debug end. skb_tailroom size = %d\n", skb_tailroom(to));
 			printk("sw.kim: Debug end. Is there any overflow?\n");
 		}
 		if (len)
