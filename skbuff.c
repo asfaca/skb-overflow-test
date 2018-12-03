@@ -4768,6 +4768,7 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 	to_shinfo = skb_shinfo(to);
 	from_shinfo = skb_shinfo(from);
 
+	printk("-----------------------------");
 	printk("sw.kim: Debug pre hook\n");
 	if (from_shinfo->frag_list) {
 		printk("sw.kim: Debug pre hook. from skb has frag_list.\n");
@@ -4797,12 +4798,15 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 		return true;
 	}
 
-	if (to_shinfo->frag_list || from_shinfo->frag_list)
+	if (to_shinfo->frag_list || from_shinfo->frag_list) {
+		printk("sw.kim: Debug. to_shinfo->frag_list || from_shinfo->frag_list enter. return false.\n");
 		return false;
+	}
 	if (skb_zcopy(to) || skb_zcopy(from))
 		return false;
 
 	if (skb_headlen(from) != 0) {
+		printk("sw.kim: Debug. if (skb_headlen(from) != 0) enter.\n");
 		struct page *page;
 		unsigned int offset;
 
@@ -4822,6 +4826,7 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 				   page, offset, skb_headlen(from));
 		*fragstolen = true;
 	} else {
+		printk("sw.kim: Debug. if (skb_headlen(from) != 0) else enter.\n");
 		if (to_shinfo->nr_frags +
 		    from_shinfo->nr_frags > MAX_SKB_FRAGS)
 			return false;
