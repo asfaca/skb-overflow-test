@@ -4758,7 +4758,9 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 		      bool *fragstolen, int *delta_truesize)
 {
 	struct skb_shared_info *to_shinfo, *from_shinfo;
+	struct sk_buff *frag_iter;
 	int i, delta, len = from->len;
+	int len2;
 
 	*fragstolen = false;
 
@@ -4771,25 +4773,25 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 	printk("-----------------------------");
 	printk("sw.kim: Debug pre hook\n");
 	if (from_shinfo->frag_list) {
-		printk("sw.kim: Debug pre hook. from skb has frag_list.\n");
+		printk("sw.kim: Debug pre hook. [from] skb has frag_list.\n");
 	}
 
-	printk("sw.kim: Debug skb_try_coalesce enter\n");
 	if (len <= skb_tailroom(to)) {
 		printk("sw.kim: Debug if (len <= skb_tailroom(to)) enter. \n");
-		printk("sw.kim: Debug from->len = %d\n", len);
+		printk("sw.kim: Debug [from]->len = %d\n", len);
 		if (from_shinfo->frag_list) {
-			struct sk_buff *frag_iter;
 			i = 0;
-			printk("sw.kim: Debug start. from skb has frag_list.\n");
-			printk("sw.kim: Debug from->len %d\n", len);
+			printk("sw.kim: Debug [from] skb has frag_list.\n");
+			printk("sw.kim: Debug [from]->len %d\n", len);
+			len2 = len;
 			skb_walk_frags(from, frag_iter) {
-				len += frag_iter->len;
-				printk("sw.kim: Debug frag_list skb[%d]->len = %d\n", frag_iter->len);
-				printk("sw.kim: Debug Current total skb length = %d\n", len);
+				len2 += frag_iter->len;
+				printk("sw.kim: Debug frag_list skb->len = %d\n", frag_iter->len);
+				printk("sw.kim: Debug Current total [from] skb length = %d\n", len2);
 			}
-			printk("sw.kim: Debug end. original skb len = %d\n", len);
-			printk("sw.kim: Debug end. skb_tailroom size = %d\n", skb_tailroom(to));
+			printk("sw.kim: Debug original [from] skb len = %d\n", len);
+			printk("sw.kim: Debug total [from] skb len = %d\n", len2);
+			printk("sw.kim: Debug [to] skb_tailroom size = %d\n", skb_tailroom(to));
 			printk("sw.kim: Debug end. Is there any overflow?\n");
 		}
 		if (len)
@@ -4799,7 +4801,21 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 	}
 
 	if (to_shinfo->frag_list || from_shinfo->frag_list) {
-		printk("sw.kim: Debug. to_shinfo->frag_list || from_shinfo->frag_list enter. return false.\n");
+		printk("sw.kim: Debug to_shinfo->frag_list || from_shinfo->frag_list enter. return false.\n");
+		printk("sw.kim: Debug [to]->len %d\n", to->len);
+		len2 = to->len;
+		skb_walk_frags (to, frag_iter) {
+			len2 += frag_iter->len;
+			printk("sw.kim: Debug frag_list skb->len = %d\n", frag_iter->len);
+			printk("sw.kim: Debug Current total [to] skb length = %d\n", len2);
+		}
+		printk("sw.kim: Debug [from]->len %d\n", from->len);
+		len2 = from->len;
+		skb_walk_frags (from, frag_iter) {
+			len2 += frag_iter->len;
+			printk("sw.kim: Debug frag_list skb->len = %d\n", frag_iter->len);
+			printk("sw.kim: Debug Current total [from] skb length = %d\n", len2);
+		}
 		return false;
 	}
 	if (skb_zcopy(to) || skb_zcopy(from))
