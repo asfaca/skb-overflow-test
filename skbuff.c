@@ -4755,12 +4755,13 @@ EXPORT_SYMBOL(kfree_skb_partial);
  * @delta_truesize: how much more was allocated than was requested
  */
 bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
-		      bool *fragstolen, int *delta_truesize)
+		      bool *fragstolen, int *delta_truesize,
+		      int called_by_tcp)
 {
 	struct skb_shared_info *to_shinfo, *from_shinfo;
 	struct sk_buff *frag_iter;
 	int i, delta, len = from->len;
-	int len2;
+	int is_frag = 0;
 
 	*fragstolen = false;
 
@@ -4770,59 +4771,31 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 	to_shinfo = skb_shinfo(to);
 	from_shinfo = skb_shinfo(from);
 
-	printk("-----------------------------");
-	printk("sw.kim: Debug pre hook\n");
+	if (to_shinfo->frag_list)
+		printk("sw.kim: [to] has frag_list\n");
 	if (from_shinfo->frag_list) {
-		printk("sw.kim: Debug pre hook. [from] skb has frag_list.\n");
+		is_frag = 1;
+		if (called_by_tcp)
+			printk("sw.kim: [from] has frag_list in TCP path\n");
+		else
+			printk("sw.kim: [from] has frag_list not in TCP path\n");
 	}
 
 	if (len <= skb_tailroom(to)) {
-		printk("sw.kim: Debug if (len <= skb_tailroom(to)) enter. \n");
-		printk("sw.kim: Debug [from]->len = %d\n", len);
-		if (from_shinfo->frag_list) {
-			i = 0;
-			printk("sw.kim: Debug [from] skb has frag_list.\n");
-			printk("sw.kim: Debug [from]->len %d\n", len);
-			len2 = len;
-			skb_walk_frags(from, frag_iter) {
-				len2 += frag_iter->len;
-				printk("sw.kim: Debug frag_list skb->len = %d\n", frag_iter->len);
-				printk("sw.kim: Debug Current total [from] skb length = %d\n", len2);
-			}
-			printk("sw.kim: Debug original [from] skb len = %d\n", len);
-			printk("sw.kim: Debug total [from] skb len = %d\n", len2);
-			printk("sw.kim: Debug [to] skb_tailroom size = %d\n", skb_tailroom(to));
-			printk("sw.kim: Debug end. Is there any overflow?\n");
-		}
 		if (len)
 			BUG_ON(skb_copy_bits(from, 0, skb_put(to, len), len));
 		*delta_truesize = 0;
+		if (unlikely(called_by_tcp && is_frag))
+			printk("sw.kim: [tcp call] copy [from] packet to [to] tailroom. there is some memory leak\n");
 		return true;
 	}
 
-	if (to_shinfo->frag_list || from_shinfo->frag_list) {
-		printk("sw.kim: Debug to_shinfo->frag_list || from_shinfo->frag_list enter. return false.\n");
-		printk("sw.kim: Debug [to]->len %d\n", to->len);
-		len2 = to->len;
-		skb_walk_frags (to, frag_iter) {
-			len2 += frag_iter->len;
-			printk("sw.kim: Debug frag_list skb->len = %d\n", frag_iter->len);
-			printk("sw.kim: Debug Current total [to] skb length = %d\n", len2);
-		}
-		printk("sw.kim: Debug [from]->len %d\n", from->len);
-		len2 = from->len;
-		skb_walk_frags (from, frag_iter) {
-			len2 += frag_iter->len;
-			printk("sw.kim: Debug frag_list skb->len = %d\n", frag_iter->len);
-			printk("sw.kim: Debug Current total [from] skb length = %d\n", len2);
-		}
+	if (to_shinfo->frag_list || from_shinfo->frag_list)
 		return false;
-	}
 	if (skb_zcopy(to) || skb_zcopy(from))
 		return false;
 
 	if (skb_headlen(from) != 0) {
-		printk("sw.kim: Debug. if (skb_headlen(from) != 0) enter.\n");
 		struct page *page;
 		unsigned int offset;
 
@@ -4842,7 +4815,6 @@ bool skb_try_coalesce(struct sk_buff *to, struct sk_buff *from,
 				   page, offset, skb_headlen(from));
 		*fragstolen = true;
 	} else {
-		printk("sw.kim: Debug. if (skb_headlen(from) != 0) else enter.\n");
 		if (to_shinfo->nr_frags +
 		    from_shinfo->nr_frags > MAX_SKB_FRAGS)
 			return false;
